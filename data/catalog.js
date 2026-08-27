@@ -20,8 +20,23 @@ export const modules = [
   { slug: 'project-management', icon: icon('<path d="M5 4h14v16H5z"/><path d="m8 9 2 2 4-4M8 15h8"/>') }
 ];
 export const clients = [
-  { name: 'tawreda.com', image: '/Customer/441950956_982148760581704_4750039257768009608_n.jpg', className: 'logo-tawreda' },
-  { name: 'Conagra', image: '/Customer/443928540_850540383761297_7494007671172417250_n - Copy-Pica.png', className: 'logo-conagra' },
-  { name: 'GESC', image: '/Customer/logo.webp', className: 'logo-gesc' },
-  { name: 'المكتب الاستشاري دكتور عبدالرحمن', className: 'client-name' }
+  {
+    name: 'tawreda.com',
+    image: './Customer/441950956_982148760581704_4750039257768009608_n.jpg',
+    className: 'logo-tawreda'
+  },
+  {
+    name: 'Conagra',
+    image: './Customer/443928540_850540383761297_7494007671172417250_n - Copy-Pica.png',
+    className: 'logo-conagra'
+  },
+  {
+    name: 'GESC',
+    image: './Customer/logo.webp',
+    className: 'logo-gesc'
+  },
+  {
+    name: 'المكتب الاستشاري دكتور عبدالرحمن',
+    className: 'client-name'
+  }
 ];
