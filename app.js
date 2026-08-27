@@ -2,77 +2,1466 @@ import en from './locales/en.js';
 import ar from './locales/ar.js';
 import { services, modules, clients } from './data/catalog.js';
 
-// Live Server may open the entry file directly; keep the public URL clean.
-if (location.pathname === '/index.html') history.replaceState({}, '', '/');
-
 const app = document.querySelector('#app');
 const dictionaries = { en, ar };
+
 const whatsapp = '201551533177';
-const social = { linkedin: 'https://www.linkedin.com/in/mohamed-sayed-1a65b0244/', facebook: 'https://www.facebook.com/profile.php?id=61584516176930' };
+
+const social = {
+  linkedin: 'https://www.linkedin.com/in/mohamed-sayed-1a65b0244/',
+  facebook: 'https://www.facebook.com/profile.php?id=61584516176930'
+};
+
 let scrollHandlerAttached = false;
 
-function routeInfo() {
-  const parts = location.pathname.replace(/\/+$/, '').split('/').filter(Boolean);
-  const lang = parts[0] === 'ar' ? 'ar' : 'en';
-  return { lang, path: (lang === 'ar' ? parts.slice(1) : parts).join('/') };
+/* Detect the GitHub Pages base path automatically */
+const basePath = (() => {
+  const parts = location.pathname.split('/').filter(Boolean);
+
+  // GitHub Pages project site:
+  // /RepositoryName/
+  // GitHub Pages user site:
+  // /
+  if (location.hostname.endsWith('.github.io') && parts.length > 0) {
+    return `/${parts[0]}`;
+  }
+
+  return '';
+})();
+
+function cleanPath() {
+  let path = location.pathname;
+
+  if (basePath && path.startsWith(basePath)) {
+    path = path.slice(basePath.length);
+  }
+
+  return path.replace(/^\/+|\/+$/g, '');
 }
-function href(path, lang = routeInfo().lang) { return `${lang === 'ar' ? '/ar' : ''}${path ? `/${path}` : ''}` || '/'; }
-function titleCase(slug) { return slug.replaceAll('-', ' ').replace(/\b\w/g, l => l.toUpperCase()); }
-function esc(value = '') { return String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[c]); }
+
+function routeInfo() {
+  const rawPath = cleanPath();
+  const parts = rawPath.split('/').filter(Boolean);
+
+  const lang = parts[0] === 'ar' ? 'ar' : 'en';
+
+  return {
+    lang,
+    path: (lang === 'ar' ? parts.slice(1) : parts).join('/')
+  };
+}
+
+function href(path = '', lang = routeInfo().lang) {
+  const prefix = basePath || '';
+
+  if (lang === 'ar') {
+    return `${prefix}/ar${path ? `/${path}` : ''}`;
+  }
+
+  return `${prefix}${path ? `/${path}` : '/'}`;
+}
+
+function titleCase(slug) {
+  return slug
+    .replaceAll('-', ' ')
+    .replace(/\b\w/g, l => l.toUpperCase());
+}
+
+function esc(value = '') {
+  return String(value).replace(
+    /[&<>"']/g,
+    c => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    })[c]
+  );
+}
 
 function setMeta(t, pageTitle, description) {
   document.documentElement.lang = routeInfo().lang;
   document.documentElement.dir = t.dir;
+
   document.title = `${pageTitle} | Mohamed Sayed`;
-  document.querySelector('meta[name="description"]').content = description;
-  document.querySelector('meta[property="og:title"]').content = pageTitle;
-  document.querySelector('meta[property="og:description"]').content = description;
-  document.querySelector('link[rel="canonical"]').href = location.href;
-  document.querySelector('#structured-data').textContent = JSON.stringify({ '@context': 'https://schema.org', '@type': 'ProfessionalService', name: 'Mohamed Sayed — ERP Consultant', url: location.origin + location.pathname, description, areaServed: 'Worldwide', sameAs: [social.linkedin, social.facebook] });
+
+  document.querySelector('meta[name="description"]').content =
+    description;
+
+  document.querySelector('meta[property="og:title"]').content =
+    pageTitle;
+
+  document.querySelector('meta[property="og:description"]').content =
+    description;
+
+  document.querySelector('link[rel="canonical"]').href =
+    location.href;
+
+  document.querySelector('#structured-data').textContent =
+    JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'ProfessionalService',
+      name: 'Mohamed Sayed — ERP Consultant',
+      url: location.origin + location.pathname,
+      description,
+      areaServed: 'Worldwide',
+      sameAs: [
+        social.linkedin,
+        social.facebook
+      ]
+    });
 }
-function arrow(t) { return `<span class="arrow" aria-hidden="true">${t.dir === 'rtl' ? '←' : '→'}</span>`; }
-function button(label, url, type = 'primary', t) { return `<a class="button ${type}" href="${url}">${esc(label)} ${arrow(t)}</a>`; }
-function breadcrumb(t, items) { return `<nav class="breadcrumb" aria-label="${t.labels.breadcrumb}"><a href="${href('', routeInfo().lang)}">${t.home}</a>${items.map(i => `<span>/</span>${i.href ? `<a href="${i.href}">${esc(i.label)}</a>` : `<strong>${esc(i.label)}</strong>`}`).join('')}</nav>`; }
+
+function arrow(t) {
+  return `<span class="arrow" aria-hidden="true">${
+    t.dir === 'rtl' ? '←' : '→'
+  }</span>`;
+}
+
+function button(label, url, type = 'primary', t) {
+  return `<a class="button ${type}" href="${url}">
+    ${esc(label)} ${arrow(t)}
+  </a>`;
+}
+
+function breadcrumb(t, items) {
+  return `
+    <nav class="breadcrumb" aria-label="${t.labels.breadcrumb}">
+      <a href="${href('', routeInfo().lang)}">${t.home}</a>
+      ${items.map(i =>
+        `<span>/</span>${
+          i.href
+            ? `<a href="${i.href}">${esc(i.label)}</a>`
+            : `<strong>${esc(i.label)}</strong>`
+        }`
+      ).join('')}
+    </nav>
+  `;
+}
 
 function nav(t, current) {
-  const links = [['',t.home],['about',t.about],['services',t.services],['modules',t.modules],['contact',t.contact]];
-  const sw = routeInfo().lang === 'ar' ? location.pathname.replace(/^\/ar(?=\/|$)/, '') || '/' : `/ar${location.pathname === '/' ? '' : location.pathname}`;
-  return `<header class="site-header" id="top"><nav class="navbar wrap" aria-label="Primary navigation"><a class="brand" href="${href('')}"><span class="brand-mark">M</span><span>Mohamed <b>Sayed</b><small>ERP Consultant</small></span></a><div class="nav-links" id="site-menu">${links.map(([url,label]) => `<a class="${current === url ? 'active' : ''}" href="${href(url)}">${label}</a>`).join('')}</div><div class="nav-actions"><a class="language" href="${sw}" lang="${routeInfo().lang === 'ar' ? 'en' : 'ar'}">${t.language}</a>${button(t.consultation, href('contact'), 'nav-cta', t)}<button class="menu-toggle" aria-controls="site-menu" aria-expanded="false" aria-label="${t.nav.menu}"><i></i><i></i></button></div></nav></header>`;
-}
-function footer(t) { return `<footer class="footer"><div class="wrap footer-grid"><div><a class="brand footer-brand" href="${href('')}"><span class="brand-mark">M</span><span>Mohamed <b>Sayed</b><small>${t.footer.role}</small></span></a><p>${t.footer.description}</p></div><div><h3>${t.services}</h3>${services.map(s=>`<a href="${href(`services/${s.slug}`)}">${t.servicesData[s.slug].title}</a>`).join('')}</div><div><h3>${t.modules}</h3>${modules.slice(0,6).map(m=>`<a href="${href(`modules/${m.slug}`)}">${t.modulesData[m.slug].title}</a>`).join('')}</div><div><h3>${t.footer.social}</h3><a target="_blank" rel="noreferrer" href="${social.linkedin}">LinkedIn</a><a target="_blank" rel="noreferrer" href="${social.facebook}">Facebook</a><a target="_blank" rel="noreferrer" href="https://wa.me/${whatsapp}">WhatsApp</a><a href="tel:+201001935187">01001935187</a></div></div><div class="wrap footer-bottom"><span>${t.footer.rights}</span><a href="${routeInfo().lang === 'ar' ? location.pathname.replace(/^\/ar/,'') || '/' : `/ar${location.pathname === '/' ? '' : location.pathname}`}">${t.language}</a></div></footer>`; }
-function globalCta(t) { return `<section class="global-cta"><div class="wrap cta-inner reveal"><div><span class="eyebrow">ERPNext · Business · Technology</span><h2>${t.globalCta.title}</h2><p>${t.globalCta.text}</p></div>${button(t.globalCta.button, href('contact'), 'light', t)}</div></section>`; }
-function card(icon, title, text, link, label, t) { return `<article class="card reveal"><span class="card-icon">${icon}</span><h3>${title}</h3><p>${text}</p><a class="text-link" href="${link}">${label} ${arrow(t)}</a></article>`; }
-function heroVisual(t) { const nodes = ['Accounting','Sales','Inventory','HR','Manufacturing','APIs']; return `<div class="erp-visual reveal" aria-label="ERPNext connected business systems illustration"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="erp-core"><span class="pulse"></span><b>${t.hero.core}</b><small>One source of truth</small></div>${nodes.map((x,i)=>`<span class="system-node node-${i}">${x}</span>`).join('')}<svg viewBox="0 0 500 400" aria-hidden="true"><path d="M250 200 L80 92 M250 200 L415 92 M250 200 L70 235 M250 200 L428 235 M250 200 L125 345 M250 200 L375 345" /></svg></div>`; }
-function pageHero(t, eyebrow, title, text) { return `<section class="page-hero"><div class="wrap"><div class="hero-copy reveal">${eyebrow ? `<span class="eyebrow">${eyebrow}</span>` : ''}<h1>${title}</h1><p>${text}</p></div></div></section>`; }
+  const links = [
+    ['', t.home],
+    ['about', t.about],
+    ['services', t.services],
+    ['modules', t.modules],
+    ['contact', t.contact]
+  ];
 
-function clientsSection(t) { return `<section class="clients-section"><div class="wrap"><div class="section-heading clients-heading reveal"><span class="eyebrow">CLIENTS · OPERATIONS · RESULTS</span><h2>${t.home.clientsTitle}</h2><p>${t.home.clientsText}</p></div><div class="client-grid">${clients.map(c=>`<article class="client-card reveal">${c.image ? `<img class="${c.className}" src="${c.image}" alt="${c.name} logo" loading="lazy" />` : `<span class="${c.className}">${c.name}</span>`}</article>`).join('')}</div></div></section>`; }
-function home(t) { return `<main id="main"><section class="hero"><div class="wrap hero-grid"><div class="hero-copy"><span class="eyebrow animate-in">${t.hero.eyebrow}</span><h1 class="animate-in delay-1">${t.hero.title}</h1><p class="animate-in delay-2">${t.hero.text}</p><div class="hero-actions animate-in delay-3">${button(t.hero.primary, href('contact'), 'primary', t)}${button(t.hero.secondary, href('services'), 'secondary', t)}</div></div>${heroVisual(t)}</div><div class="hero-glow"></div></section><section class="section"><div class="wrap"><div class="section-heading reveal"><span class="eyebrow">SERVICES</span><h2>${t.home.servicesTitle}</h2><p>${t.home.servicesText}</p></div><div class="cards services-grid">${services.map(s=>card(s.icon,t.servicesData[s.slug].title,t.servicesData[s.slug].short,href(`services/${s.slug}`),t.labels.learn,t)).join('')}</div></div></section><section class="section tint"><div class="wrap"><div class="section-heading split reveal"><div><span class="eyebrow">ERPNext</span><h2>${t.home.modulesTitle}</h2></div><p>${t.home.modulesText}</p></div><div class="module-grid">${modules.map(m=>`<a class="module-card reveal" href="${href(`modules/${m.slug}`)}"><span>${m.icon}</span><h3>${t.modulesData[m.slug].title.replace('ERPNext ', '')}</h3><p>${t.modulesData[m.slug].intro}</p></a>`).join('')}</div><div class="center reveal">${button(t.labels.allModules,href('modules'),'secondary',t)}</div></div></section><section class="section"><div class="wrap"><div class="section-heading reveal"><span class="eyebrow">WHY MOHAMED SAYED</span><h2>${t.home.whyTitle}</h2></div><div class="why-grid">${t.why.map(([title,text],i)=>`<article class="why-card reveal"><span>0${i+1}</span><h3>${title}</h3><p>${text}</p></article>`).join('')}</div></div></section>${clientsSection(t)}<section class="section process-section"><div class="wrap"><div class="section-heading reveal"><span class="eyebrow">PROCESS</span><h2>${t.home.processTitle}</h2></div><div class="timeline">${t.process.map(([num,title,text])=>`<article class="timeline-item reveal"><span>${num}</span><div><h3>${title}</h3><p>${text}</p></div></article>`).join('')}</div></div></section><section class="home-cta"><div class="wrap cta-inner reveal"><div><span class="eyebrow">START A CONVERSATION</span><h2>${t.home.ctaTitle}</h2><p>${t.home.ctaText}</p></div>${button(t.home.cta,href('contact'),'light',t)}</div></section></main>`; }
-function landing(t, kind) { const isServices = kind === 'services', d = isServices ? t.servicesPage : t.modulesPage, list = isServices ? services : modules; return `<main id="main">${pageHero(t, isServices ? 'ERPNext SERVICES' : 'ERPNext PLATFORM', d.title,d.text)}<section class="section"><div class="wrap"><div class="${isServices ? 'cards services-grid' : 'module-grid'}">${list.map(x=>isServices ? card(x.icon,t.servicesData[x.slug].title,t.servicesData[x.slug].short,href(`services/${x.slug}`),t.labels.learn,t) : `<a class="module-card reveal" href="${href(`modules/${x.slug}`)}"><span>${x.icon}</span><h2>${t.modulesData[x.slug].title}</h2><p>${t.modulesData[x.slug].intro}</p></a>`).join('')}</div></div></section>${globalCta(t)}</main>`; }
-function servicePage(t, slug) { const s=t.servicesData[slug]; if(!s) return notFound(t); const integration=slug==='erpnext-integration'; return `<main id="main">${pageHero(t,'ERPNext SERVICES',s.title,s.short)}<section class="content-section"><div class="wrap">${breadcrumb(t,[{label:t.services,href:href('services')},{label:s.title}])}<div class="prose reveal"><p class="lead">${s.description}</p>${integration?'<div class="flow"><span>External Platform</span><b>→ API →</b><span>ERPNext</span><b>→</b><span>Business Process</span></div>':''}<h2>${t.labels.features}</h2><ul class="feature-list">${s.features.map(x=>`<li>${x}</li>`).join('')}</ul></div></div></section>${globalCta(t)}</main>`; }
-function modulePage(t, slug) { const m=t.modulesData[slug]; if(!m) return notFound(t); const hasHealthcare=slug==='healthcare'; return `<main id="main">${pageHero(t,'ERPNext MODULE',m.title,m.intro)}<section class="content-section"><div class="wrap">${breadcrumb(t,[{label:t.modules,href:href('modules')},{label:m.title}])}<div class="prose reveal"><p class="lead">${m.intro}</p><h2>${t.labels.features}</h2><ul class="feature-list">${m.features.map(x=>`<li>${x}</li>`).join('')}</ul><h2>${t.labels.benefits}</h2><div class="benefit">${m.benefit}</div>${hasHealthcare?'<p class="note">Implementation details depend on the facility’s requirements and the configuration needed.</p>':''}<h2>${t.labels.related}</h2><div class="related">${m.related.map(x=>`<a href="${href(`modules/${x}`)}">${t.modulesData[x].title}</a>`).join('')}</div><h2>${t.labels.considerations}</h2><p>Implementation is planned around business processes, roles, master data, reporting needs, and the connections required with other ERPNext modules.</p></div></div></section>${globalCta(t)}</main>`; }
-function about(t) { return `<main id="main">${pageHero(t,'ABOUT',t.aboutPage.title,t.aboutPage.lead)}<section class="content-section about"><div class="wrap"><div class="about-grid"><div class="portrait-abstract reveal"><span>M</span><i></i><i></i><i></i></div><div class="prose reveal">${t.aboutPage.paragraphs.map(x=>`<p>${x}</p>`).join('')}<div class="stats"><div><b>ERPNext</b><span>Focused consulting</span></div><div><b>End-to-end</b><span>From analysis to support</span></div></div></div></div></div></section>${globalCta(t)}</main>`; }
-function contact(t) { const f=t.contactPage.fields; return `<main id="main">${pageHero(t,'CONTACT',t.contactPage.title,t.contactPage.text)}<section class="section"><div class="wrap contact-grid"><form class="contact-form reveal" novalidate><div class="form-row">${input(f[0],'name',true)}${input(f[1],'company')}</div><div class="form-row">${input(f[2],'email',true,'email')}${input(f[3],'phone')}</div><label>${f[4]}<select name="service"><option value="">—</option>${services.map(s=>`<option>${t.servicesData[s.slug].title}</option>`).join('')}</select></label><label>${f[5]}<input name="modules" /></label><label>${f[6]}<textarea name="description" required rows="5"></textarea><small class="field-error"></small></label><label>${f[7]}<select name="method"><option>WhatsApp</option><option>Email</option><option>Phone</option></select></label><button class="button primary submit" type="submit">${t.contactPage.send} ${arrow(t)}</button><p class="form-success" role="status" hidden>${t.contactPage.success}</p></form><aside class="contact-aside reveal"><span class="eyebrow">DIRECT CONTACT</span><h2>Mohamed Sayed</h2><p>${t.footer.role}</p><a href="tel:+201001935187">01001935187</a><a href="https://wa.me/${whatsapp}" target="_blank" rel="noreferrer">WhatsApp · 01551533177</a><a href="${social.linkedin}" target="_blank" rel="noreferrer">LinkedIn</a><a href="${social.facebook}" target="_blank" rel="noreferrer">Facebook</a></aside></div></section></main>`; function input(label,name,required=false,type='text'){return `<label>${label}<input name="${name}" type="${type}" ${required?'required':''}/><small class="field-error"></small></label>`;} }
-function notFound(t) { return `<main id="main"><section class="not-found"><div class="wrap"><span class="error-code">404</span><h1>${t.notFound.title}</h1><p>${t.notFound.text}</p><div class="hero-actions">${button(t.notFound.home,href(''),'primary',t)}${button(t.services,href('services'),'secondary',t)}</div></div></section></main>`; }
-function extras(t) { return `<a class="whatsapp" href="https://wa.me/${whatsapp}" target="_blank" rel="noreferrer" aria-label="Chat on WhatsApp"><span>◔</span><b>Chat on WhatsApp</b></a><button class="back-top" aria-label="${t.labels.backTop}">↑</button>`; }
+  const currentLang = routeInfo().lang;
+
+  const currentPath = cleanPath();
+
+  let sw;
+
+  if (currentLang === 'ar') {
+    const englishPath = currentPath.replace(/^ar\/?/, '');
+    sw = href(englishPath, 'en');
+  } else {
+    sw = href(currentPath, 'ar');
+  }
+
+  return `
+    <header class="site-header" id="top">
+      <nav class="navbar wrap" aria-label="Primary navigation">
+
+        <a class="brand" href="${href('')}">
+          <span class="brand-mark">M</span>
+          <span>
+            Mohamed <b>Sayed</b>
+            <small>ERP Consultant</small>
+          </span>
+        </a>
+
+        <div class="nav-links" id="site-menu">
+          ${links.map(([url, label]) =>
+            `<a class="${current === url ? 'active' : ''}"
+                href="${href(url)}">${label}</a>`
+          ).join('')}
+        </div>
+
+        <div class="nav-actions">
+
+          <a class="language"
+             href="${sw}"
+             lang="${currentLang === 'ar' ? 'en' : 'ar'}">
+             ${t.language}
+          </a>
+
+          ${button(
+            t.consultation,
+            href('contact'),
+            'nav-cta',
+            t
+          )}
+
+          <button
+            class="menu-toggle"
+            aria-controls="site-menu"
+            aria-expanded="false"
+            aria-label="${t.nav.menu}">
+            <i></i>
+            <i></i>
+          </button>
+
+        </div>
+      </nav>
+    </header>
+  `;
+}
+
+function footer(t) {
+  return `
+    <footer class="footer">
+      <div class="wrap footer-grid">
+
+        <div>
+          <a class="brand footer-brand" href="${href('')}">
+            <span class="brand-mark">M</span>
+            <span>
+              Mohamed <b>Sayed</b>
+              <small>${t.footer.role}</small>
+            </span>
+          </a>
+
+          <p>${t.footer.description}</p>
+        </div>
+
+        <div>
+          <h3>${t.services}</h3>
+          ${services.map(s =>
+            `<a href="${href(`services/${s.slug}`)}">
+              ${t.servicesData[s.slug].title}
+            </a>`
+          ).join('')}
+        </div>
+
+        <div>
+          <h3>${t.modules}</h3>
+          ${modules.slice(0, 6).map(m =>
+            `<a href="${href(`modules/${m.slug}`)}">
+              ${t.modulesData[m.slug].title}
+            </a>`
+          ).join('')}
+        </div>
+
+        <div>
+          <h3>${t.footer.social}</h3>
+
+          <a target="_blank"
+             rel="noreferrer"
+             href="${social.linkedin}">
+             LinkedIn
+          </a>
+
+          <a target="_blank"
+             rel="noreferrer"
+             href="${social.facebook}">
+             Facebook
+          </a>
+
+          <a target="_blank"
+             rel="noreferrer"
+             href="https://wa.me/${whatsapp}">
+             WhatsApp
+          </a>
+
+          <a href="tel:+201001935187">
+            01001935187
+          </a>
+        </div>
+
+      </div>
+
+      <div class="wrap footer-bottom">
+        <span>${t.footer.rights}</span>
+
+        <a href="${
+          routeInfo().lang === 'ar'
+            ? href(cleanPath().replace(/^ar\/?/, ''), 'en')
+            : href(cleanPath(), 'ar')
+        }">
+          ${t.language}
+        </a>
+      </div>
+    </footer>
+  `;
+}
+
+function globalCta(t) {
+  return `
+    <section class="global-cta">
+      <div class="wrap cta-inner reveal">
+
+        <div>
+          <span class="eyebrow">
+            ERPNext · Business · Technology
+          </span>
+
+          <h2>${t.globalCta.title}</h2>
+          <p>${t.globalCta.text}</p>
+        </div>
+
+        ${button(
+          t.globalCta.button,
+          href('contact'),
+          'light',
+          t
+        )}
+
+      </div>
+    </section>
+  `;
+}
+
+function card(icon, title, text, link, label, t) {
+  return `
+    <article class="card reveal">
+      <span class="card-icon">${icon}</span>
+
+      <h3>${title}</h3>
+
+      <p>${text}</p>
+
+      <a class="text-link" href="${link}">
+        ${label} ${arrow(t)}
+      </a>
+    </article>
+  `;
+}
+
+function heroVisual(t) {
+  const nodes = [
+    'Accounting',
+    'Sales',
+    'Inventory',
+    'HR',
+    'Manufacturing',
+    'APIs'
+  ];
+
+  return `
+    <div class="erp-visual reveal"
+         aria-label="ERPNext connected business systems illustration">
+
+      <div class="orbit orbit-one"></div>
+      <div class="orbit orbit-two"></div>
+
+      <div class="erp-core">
+        <span class="pulse"></span>
+        <b>${t.hero.core}</b>
+        <small>One source of truth</small>
+      </div>
+
+      ${nodes.map((x, i) =>
+        `<span class="system-node node-${i}">${x}</span>`
+      ).join('')}
+
+      <svg viewBox="0 0 500 400" aria-hidden="true">
+        <path d="
+          M250 200 L80 92
+          M250 200 L415 92
+          M250 200 L70 235
+          M250 200 L428 235
+          M250 200 L125 345
+          M250 200 L375 345
+        " />
+      </svg>
+    </div>
+  `;
+}
+
+function pageHero(t, eyebrow, title, text) {
+  return `
+    <section class="page-hero">
+      <div class="wrap">
+
+        <div class="hero-copy reveal">
+
+          ${
+            eyebrow
+              ? `<span class="eyebrow">${eyebrow}</span>`
+              : ''
+          }
+
+          <h1>${title}</h1>
+          <p>${text}</p>
+
+        </div>
+
+      </div>
+    </section>
+  `;
+}
+
+function clientsSection(t) {
+  return `
+    <section class="clients-section">
+      <div class="wrap">
+
+        <div class="section-heading clients-heading reveal">
+
+          <span class="eyebrow">
+            CLIENTS · OPERATIONS · RESULTS
+          </span>
+
+          <h2>${t.home.clientsTitle}</h2>
+          <p>${t.home.clientsText}</p>
+
+        </div>
+
+        <div class="client-grid">
+
+          ${clients.map(c =>
+            `<article class="client-card reveal">
+
+              ${
+                c.image
+                  ? `<img
+                      class="${c.className}"
+                      src="${c.image}"
+                      alt="${c.name} logo"
+                      loading="lazy" />`
+                  : `<span class="${c.className}">
+                      ${c.name}
+                    </span>`
+              }
+
+            </article>`
+          ).join('')}
+
+        </div>
+
+      </div>
+    </section>
+  `;
+}
+
+function home(t) {
+  return `
+    <main id="main">
+
+      <section class="hero">
+        <div class="wrap hero-grid">
+
+          <div class="hero-copy">
+
+            <span class="eyebrow animate-in">
+              ${t.hero.eyebrow}
+            </span>
+
+            <h1 class="animate-in delay-1">
+              ${t.hero.title}
+            </h1>
+
+            <p class="animate-in delay-2">
+              ${t.hero.text}
+            </p>
+
+            <div class="hero-actions animate-in delay-3">
+
+              ${button(
+                t.hero.primary,
+                href('contact'),
+                'primary',
+                t
+              )}
+
+              ${button(
+                t.hero.secondary,
+                href('services'),
+                'secondary',
+                t
+              )}
+
+            </div>
+
+          </div>
+
+          ${heroVisual(t)}
+
+        </div>
+
+        <div class="hero-glow"></div>
+      </section>
+
+      <section class="section">
+        <div class="wrap">
+
+          <div class="section-heading reveal">
+
+            <span class="eyebrow">SERVICES</span>
+
+            <h2>${t.home.servicesTitle}</h2>
+
+            <p>${t.home.servicesText}</p>
+
+          </div>
+
+          <div class="cards services-grid">
+
+            ${services.map(s =>
+              card(
+                s.icon,
+                t.servicesData[s.slug].title,
+                t.servicesData[s.slug].short,
+                href(`services/${s.slug}`),
+                t.labels.learn,
+                t
+              )
+            ).join('')}
+
+          </div>
+
+        </div>
+      </section>
+
+      <section class="section tint">
+
+        <div class="wrap">
+
+          <div class="section-heading split reveal">
+
+            <div>
+              <span class="eyebrow">ERPNext</span>
+              <h2>${t.home.modulesTitle}</h2>
+            </div>
+
+            <p>${t.home.modulesText}</p>
+
+          </div>
+
+          <div class="module-grid">
+
+            ${modules.map(m =>
+              `<a class="module-card reveal"
+                  href="${href(`modules/${m.slug}`)}">
+
+                <span>${m.icon}</span>
+
+                <h3>
+                  ${t.modulesData[m.slug].title.replace(
+                    'ERPNext ',
+                    ''
+                  )}
+                </h3>
+
+                <p>
+                  ${t.modulesData[m.slug].intro}
+                </p>
+
+              </a>`
+            ).join('')}
+
+          </div>
+
+          <div class="center reveal">
+
+            ${button(
+              t.labels.allModules,
+              href('modules'),
+              'secondary',
+              t
+            )}
+
+          </div>
+
+        </div>
+      </section>
+
+      <section class="section">
+
+        <div class="wrap">
+
+          <div class="section-heading reveal">
+
+            <span class="eyebrow">
+              WHY MOHAMED SAYED
+            </span>
+
+            <h2>${t.home.whyTitle}</h2>
+
+          </div>
+
+          <div class="why-grid">
+
+            ${t.why.map(([title, text], i) =>
+              `<article class="why-card reveal">
+
+                <span>0${i + 1}</span>
+
+                <h3>${title}</h3>
+
+                <p>${text}</p>
+
+              </article>`
+            ).join('')}
+
+          </div>
+
+        </div>
+      </section>
+
+      ${clientsSection(t)}
+
+      <section class="section process-section">
+
+        <div class="wrap">
+
+          <div class="section-heading reveal">
+
+            <span class="eyebrow">PROCESS</span>
+
+            <h2>${t.home.processTitle}</h2>
+
+          </div>
+
+          <div class="timeline">
+
+            ${t.process.map(([num, title, text]) =>
+              `<article class="timeline-item reveal">
+
+                <span>${num}</span>
+
+                <div>
+                  <h3>${title}</h3>
+                  <p>${text}</p>
+                </div>
+
+              </article>`
+            ).join('')}
+
+          </div>
+
+        </div>
+      </section>
+
+      <section class="home-cta">
+
+        <div class="wrap cta-inner reveal">
+
+          <div>
+
+            <span class="eyebrow">
+              START A CONVERSATION
+            </span>
+
+            <h2>${t.home.ctaTitle}</h2>
+
+            <p>${t.home.ctaText}</p>
+
+          </div>
+
+          ${button(
+            t.home.cta,
+            href('contact'),
+            'light',
+            t
+          )}
+
+        </div>
+
+      </section>
+
+    </main>
+  `;
+}
+
+function landing(t, kind) {
+  const isServices = kind === 'services';
+  const d = isServices
+    ? t.servicesPage
+    : t.modulesPage;
+
+  const list = isServices
+    ? services
+    : modules;
+
+  return `
+    <main id="main">
+
+      ${pageHero(
+        t,
+        isServices
+          ? 'ERPNext SERVICES'
+          : 'ERPNext PLATFORM',
+        d.title,
+        d.text
+      )}
+
+      <section class="section">
+
+        <div class="wrap">
+
+          <div class="${
+            isServices
+              ? 'cards services-grid'
+              : 'module-grid'
+          }">
+
+            ${list.map(x =>
+              isServices
+                ? card(
+                    x.icon,
+                    t.servicesData[x.slug].title,
+                    t.servicesData[x.slug].short,
+                    href(`services/${x.slug}`),
+                    t.labels.learn,
+                    t
+                  )
+                : `<a
+                    class="module-card reveal"
+                    href="${href(`modules/${x.slug}`)}">
+
+                    <span>${x.icon}</span>
+
+                    <h2>
+                      ${t.modulesData[x.slug].title}
+                    </h2>
+
+                    <p>
+                      ${t.modulesData[x.slug].intro}
+                    </p>
+
+                  </a>`
+            ).join('')}
+
+          </div>
+
+        </div>
+      </section>
+
+      ${globalCta(t)}
+
+    </main>
+  `;
+}
+
+function servicePage(t, slug) {
+  const s = t.servicesData[slug];
+
+  if (!s) return notFound(t);
+
+  const integration =
+    slug === 'erpnext-integration';
+
+  return `
+    <main id="main">
+
+      ${pageHero(
+        t,
+        'ERPNext SERVICES',
+        s.title,
+        s.short
+      )}
+
+      <section class="content-section">
+
+        <div class="wrap">
+
+          ${breadcrumb(t, [
+            {
+              label: t.services,
+              href: href('services')
+            },
+            {
+              label: s.title
+            }
+          ])}
+
+          <div class="prose reveal">
+
+            <p class="lead">
+              ${s.description}
+            </p>
+
+            ${
+              integration
+                ? `<div class="flow">
+                    <span>External Platform</span>
+                    <b>→ API →</b>
+                    <span>ERPNext</span>
+                    <b>→</b>
+                    <span>Business Process</span>
+                  </div>`
+                : ''
+            }
+
+            <h2>${t.labels.features}</h2>
+
+            <ul class="feature-list">
+              ${s.features.map(x =>
+                `<li>${x}</li>`
+              ).join('')}
+            </ul>
+
+          </div>
+        </div>
+      </section>
+
+      ${globalCta(t)}
+
+    </main>
+  `;
+}
+
+function modulePage(t, slug) {
+  const m = t.modulesData[slug];
+
+  if (!m) return notFound(t);
+
+  const hasHealthcare =
+    slug === 'healthcare';
+
+  return `
+    <main id="main">
+
+      ${pageHero(
+        t,
+        'ERPNext MODULE',
+        m.title,
+        m.intro
+      )}
+
+      <section class="content-section">
+
+        <div class="wrap">
+
+          ${breadcrumb(t, [
+            {
+              label: t.modules,
+              href: href('modules')
+            },
+            {
+              label: m.title
+            }
+          ])}
+
+          <div class="prose reveal">
+
+            <p class="lead">
+              ${m.intro}
+            </p>
+
+            <h2>${t.labels.features}</h2>
+
+            <ul class="feature-list">
+              ${m.features.map(x =>
+                `<li>${x}</li>`
+              ).join('')}
+            </ul>
+
+            <h2>${t.labels.benefits}</h2>
+
+            <div class="benefit">
+              ${m.benefit}
+            </div>
+
+            ${
+              hasHealthcare
+                ? `<p class="note">
+                    Implementation details depend on
+                    the facility’s requirements and
+                    the configuration needed.
+                  </p>`
+                : ''
+            }
+
+            <h2>${t.labels.related}</h2>
+
+            <div class="related">
+
+              ${m.related.map(x =>
+                `<a href="${href(`modules/${x}`)}">
+                  ${t.modulesData[x].title}
+                </a>`
+              ).join('')}
+
+            </div>
+
+            <h2>${t.labels.considerations}</h2>
+
+            <p>
+              Implementation is planned around business
+              processes, roles, master data, reporting
+              needs, and the connections required with
+              other ERPNext modules.
+            </p>
+
+          </div>
+        </div>
+      </section>
+
+      ${globalCta(t)}
+
+    </main>
+  `;
+}
+
+function about(t) {
+  return `
+    <main id="main">
+
+      ${pageHero(
+        t,
+        'ABOUT',
+        t.aboutPage.title,
+        t.aboutPage.lead
+      )}
+
+      <section class="content-section about">
+
+        <div class="wrap">
+
+          <div class="about-grid">
+
+            <div class="portrait-abstract reveal">
+              <span>M</span>
+              <i></i>
+              <i></i>
+              <i></i>
+            </div>
+
+            <div class="prose reveal">
+
+              ${t.aboutPage.paragraphs.map(x =>
+                `<p>${x}</p>`
+              ).join('')}
+
+              <div class="stats">
+
+                <div>
+                  <b>ERPNext</b>
+                  <span>Focused consulting</span>
+                </div>
+
+                <div>
+                  <b>End-to-end</b>
+                  <span>From analysis to support</span>
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      ${globalCta(t)}
+
+    </main>
+  `;
+}
+
+function contact(t) {
+  const f = t.contactPage.fields;
+
+  return `
+    <main id="main">
+
+      ${pageHero(
+        t,
+        'CONTACT',
+        t.contactPage.title,
+        t.contactPage.text
+      )}
+
+      <section class="section">
+
+        <div class="wrap contact-grid">
+
+          <form
+            class="contact-form reveal"
+            novalidate>
+
+            <div class="form-row">
+
+              ${input(f[0], 'name', true)}
+              ${input(f[1], 'company')}
+
+            </div>
+
+            <div class="form-row">
+
+              ${input(
+                f[2],
+                'email',
+                true,
+                'email'
+              )}
+
+              ${input(f[3], 'phone')}
+
+            </div>
+
+            <label>
+              ${f[4]}
+
+              <select name="service">
+                <option value="">—</option>
+
+                ${services.map(s =>
+                  `<option>
+                    ${t.servicesData[s.slug].title}
+                  </option>`
+                ).join('')}
+
+              </select>
+            </label>
+
+            <label>
+              ${f[5]}
+              <input name="modules" />
+            </label>
+
+            <label>
+              ${f[6]}
+
+              <textarea
+                name="description"
+                required
+                rows="5"></textarea>
+
+              <small class="field-error"></small>
+            </label>
+
+            <label>
+              ${f[7]}
+
+              <select name="method">
+                <option>WhatsApp</option>
+                <option>Email</option>
+                <option>Phone</option>
+              </select>
+            </label>
+
+            <button
+              class="button primary submit"
+              type="submit">
+
+              ${t.contactPage.send}
+              ${arrow(t)}
+
+            </button>
+
+            <p
+              class="form-success"
+              role="status"
+              hidden>
+              ${t.contactPage.success}
+            </p>
+
+          </form>
+
+          <aside class="contact-aside reveal">
+
+            <span class="eyebrow">
+              DIRECT CONTACT
+            </span>
+
+            <h2>Mohamed Sayed</h2>
+
+            <p>${t.footer.role}</p>
+
+            <a href="tel:+201001935187">
+              01001935187
+            </a>
+
+            <a
+              href="https://wa.me/${whatsapp}"
+              target="_blank"
+              rel="noreferrer">
+              WhatsApp · 01551533177
+            </a>
+
+            <a
+              href="${social.linkedin}"
+              target="_blank"
+              rel="noreferrer">
+              LinkedIn
+            </a>
+
+            <a
+              href="${social.facebook}"
+              target="_blank"
+              rel="noreferrer">
+              Facebook
+            </a>
+
+          </aside>
+
+        </div>
+      </section>
+
+    </main>
+  `;
+
+  function input(
+    label,
+    name,
+    required = false,
+    type = 'text'
+  ) {
+    return `
+      <label>
+        ${label}
+
+        <input
+          name="${name}"
+          type="${type}"
+          ${required ? 'required' : ''} />
+
+        <small class="field-error"></small>
+      </label>
+    `;
+  }
+}
+
+function notFound(t) {
+  return `
+    <main id="main">
+
+      <section class="not-found">
+
+        <div class="wrap">
+
+          <span class="error-code">404</span>
+
+          <h1>${t.notFound.title}</h1>
+
+          <p>${t.notFound.text}</p>
+
+          <div class="hero-actions">
+
+            ${button(
+              t.notFound.home,
+              href(''),
+              'primary',
+              t
+            )}
+
+            ${button(
+              t.services,
+              href('services'),
+              'secondary',
+              t
+            )}
+
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+  `;
+}
+
+function extras(t) {
+  return `
+    <a
+      class="whatsapp"
+      href="https://wa.me/${whatsapp}"
+      target="_blank"
+      rel="noreferrer"
+      aria-label="Chat on WhatsApp">
+
+      <span>◔</span>
+      <b>Chat on WhatsApp</b>
+
+    </a>
+
+    <button
+      class="back-top"
+      aria-label="${t.labels.backTop}">
+      ↑
+    </button>
+  `;
+}
 
 function render() {
-  const {lang,path}=routeInfo(), t=dictionaries[lang]; let body, title, desc;
-  if(!path) { body=home(t); title=t.hero.title; desc=t.hero.text; }
-  else if(path==='about') { body=about(t); title=t.aboutPage.title; desc=t.aboutPage.lead; }
-  else if(path==='services') { body=landing(t,'services'); title=t.servicesPage.title; desc=t.servicesPage.text; }
-  else if(path==='modules') { body=landing(t,'modules'); title=t.modulesPage.title; desc=t.modulesPage.text; }
-  else if(path==='contact' || path==='request-consultation') { body=contact(t); title=t.contactPage.title; desc=t.contactPage.text; }
-  else if(path.startsWith('services/')) { const s=t.servicesData[path.slice(9)]; body=servicePage(t,path.slice(9)); title=s?.title||t.notFound.title; desc=s?.short||t.notFound.text; }
-  else if(path.startsWith('modules/')) { const m=t.modulesData[path.slice(8)]; body=modulePage(t,path.slice(8)); title=m?.title||t.notFound.title; desc=m?.intro||t.notFound.text; }
-  else { body=notFound(t); title=t.notFound.title; desc=t.notFound.text; }
-  app.innerHTML=nav(t,path)+body+footer(t)+extras(t); setMeta(t,title,desc); bind(); window.scrollTo({top:0,behavior:'instant'});
+  const {
+    lang,
+    path
+  } = routeInfo();
+
+  const t = dictionaries[lang];
+
+  let body;
+  let title;
+  let desc;
+
+  if (!path) {
+    body = home(t);
+    title = t.hero.title;
+    desc = t.hero.text;
+
+  } else if (path === 'about') {
+    body = about(t);
+    title = t.aboutPage.title;
+    desc = t.aboutPage.lead;
+
+  } else if (path === 'services') {
+    body = landing(t, 'services');
+    title = t.servicesPage.title;
+    desc = t.servicesPage.text;
+
+  } else if (path === 'modules') {
+    body = landing(t, 'modules');
+    title = t.modulesPage.title;
+    desc = t.modulesPage.text;
+
+  } else if (
+    path === 'contact' ||
+    path === 'request-consultation'
+  ) {
+    body = contact(t);
+    title = t.contactPage.title;
+    desc = t.contactPage.text;
+
+  } else if (path.startsWith('services/')) {
+
+    const slug = path.slice('services/'.length);
+    const s = t.servicesData[slug];
+
+    body = servicePage(t, slug);
+    title = s?.title || t.notFound.title;
+    desc = s?.short || t.notFound.text;
+
+  } else if (path.startsWith('modules/')) {
+
+    const slug = path.slice('modules/'.length);
+    const m = t.modulesData[slug];
+
+    body = modulePage(t, slug);
+    title = m?.title || t.notFound.title;
+    desc = m?.intro || t.notFound.text;
+
+  } else {
+    body = notFound(t);
+    title = t.notFound.title;
+    desc = t.notFound.text;
+  }
+
+  app.innerHTML =
+    nav(t, path) +
+    body +
+    footer(t) +
+    extras(t);
+
+  setMeta(t, title, desc);
+
+  bind();
+
+  window.scrollTo({
+    top: 0,
+    behavior: 'instant'
+  });
 }
+
 function bind() {
-  document.querySelectorAll('a[href^="/"]').forEach(a=>a.addEventListener('click',e=>{ if(e.metaKey||e.ctrlKey) return; e.preventDefault(); history.pushState({},'',a.href); render(); }));
-  const menu=document.querySelector('.menu-toggle'), links=document.querySelector('.nav-links'); menu?.addEventListener('click',()=>{const open=links.classList.toggle('open');menu.setAttribute('aria-expanded',open);});
-  document.querySelector('.contact-form')?.addEventListener('submit',e=>{e.preventDefault(); const form=e.currentTarget; let valid=true; form.querySelectorAll('[required]').forEach(field=>{const error=field.parentElement.querySelector('.field-error'); if(!field.value.trim() || !field.checkValidity()){field.setAttribute('aria-invalid','true');error.textContent=dictionaries[routeInfo().lang].labels.required;valid=false;}else{field.removeAttribute('aria-invalid');error.textContent='';}}); if(valid){form.querySelector('.form-success').hidden=false; form.reset();}});
-  document.querySelector('.back-top').addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
-  if(!scrollHandlerAttached){addEventListener('scroll',()=>{document.querySelector('.site-header')?.classList.toggle('scrolled',scrollY>12);document.querySelector('.back-top')?.classList.toggle('show',scrollY>550);},{passive:true});scrollHandlerAttached=true;}
-  const observer=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){entry.target.classList.add('visible');observer.unobserve(entry.target);}}),{threshold:.12});document.querySelectorAll('.reveal').forEach(x=>observer.observe(x));
+
+  /*
+   * SPA navigation
+   * Only intercept links belonging to this website.
+   */
+  document
+    .querySelectorAll('a[href]')
+    .forEach(a => {
+
+      const url = new URL(
+        a.getAttribute('href'),
+        location.href
+      );
+
+      const isInternal =
+        url.origin === location.origin &&
+        (
+          url.pathname === basePath ||
+          url.pathname.startsWith(`${basePath}/`)
+        );
+
+      if (!isInternal) return;
+
+      a.addEventListener('click', e => {
+
+        if (
+          e.metaKey ||
+          e.ctrlKey ||
+          e.shiftKey ||
+          e.altKey
+        ) {
+          return;
+        }
+
+        e.preventDefault();
+
+        history.pushState(
+          {},
+          '',
+          url.pathname + url.search + url.hash
+        );
+
+        render();
+      });
+    });
+
+  const menu =
+    document.querySelector('.menu-toggle');
+
+  const links =
+    document.querySelector('.nav-links');
+
+  menu?.addEventListener('click', () => {
+
+    const open =
+      links.classList.toggle('open');
+
+    menu.setAttribute(
+      'aria-expanded',
+      open
+    );
+  });
+
+  document
+    .querySelector('.contact-form')
+    ?.addEventListener('submit', e => {
+
+      e.preventDefault();
+
+      const form = e.currentTarget;
+
+      let valid = true;
+
+      form
+        .querySelectorAll('[required]')
+        .forEach(field => {
+
+          const error =
+            field.parentElement
+              .querySelector('.field-error');
+
+          if (
+            !field.value.trim() ||
+            !field.checkValidity()
+          ) {
+
+            field.setAttribute(
+              'aria-invalid',
+              'true'
+            );
+
+            if (error) {
+              error.textContent =
+                dictionaries[
+                  routeInfo().lang
+                ].labels.required;
+            }
+
+            valid = false;
+
+          } else {
+
+            field.removeAttribute(
+              'aria-invalid'
+            );
+
+            if (error) {
+              error.textContent = '';
+            }
+          }
+        });
+
+      if (valid) {
+
+        const success =
+          form.querySelector('.form-success');
+
+        if (success) {
+          success.hidden = false;
+        }
+
+        form.reset();
+      }
+    });
+
+  document
+    .querySelector('.back-top')
+    ?.addEventListener('click', () =>
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      })
+    );
+
+  if (!scrollHandlerAttached) {
+
+    addEventListener(
+      'scroll',
+      () => {
+
+        document
+          .querySelector('.site-header')
+          ?.classList.toggle(
+            'scrolled',
+            scrollY > 12
+          );
+
+        document
+          .querySelector('.back-top')
+          ?.classList.toggle(
+            'show',
+            scrollY > 550
+          );
+      },
+      { passive: true }
+    );
+
+    scrollHandlerAttached = true;
+  }
+
+  if ('IntersectionObserver' in window) {
+
+    const observer =
+      new IntersectionObserver(
+        entries =>
+          entries.forEach(entry => {
+
+            if (entry.isIntersecting) {
+
+              entry.target.classList.add(
+                'visible'
+              );
+
+              observer.unobserve(
+                entry.target
+              );
+            }
+          }),
+        {
+          threshold: 0.12
+        }
+      );
+
+    document
+      .querySelectorAll('.reveal')
+      .forEach(x =>
+        observer.observe(x)
+      );
+  } else {
+
+    document
+      .querySelectorAll('.reveal')
+      .forEach(x =>
+        x.classList.add('visible')
+      );
+  }
 }
-addEventListener('popstate',render); render();
+
+addEventListener(
+  'popstate',
+  render
+);
+
+render();
