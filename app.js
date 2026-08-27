@@ -2,7 +2,17 @@ import en from './locales/en.js';
 import ar from './locales/ar.js';
 import { services, modules, clients } from './data/catalog.js';
 
-const app = document.querySelector('#app');
+const savedRoute = sessionStorage.getItem('github-pages-route');
+
+if (savedRoute) {
+  sessionStorage.removeItem('github-pages-route');
+
+  history.replaceState(
+    {},
+    '',
+    basePath + savedRoute
+  );
+}
 const dictionaries = { en, ar };
 
 const whatsapp = '201551533177';
